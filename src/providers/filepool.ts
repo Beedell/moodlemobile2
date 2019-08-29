@@ -1628,6 +1628,7 @@ export class CoreFilepoolProvider {
      *                        Ignored if checkSize=false.
      * @param options Extra options (isexternalfile, repositorytype).
      * @param revision File revision. If not defined, it will be calculated using the URL.
+     * @param queuedPromiseCallback A callback that will use a queued promise.
      * @return Resolved with the URL to use.
      * @description
      * This will return a URL pointing to the content of the requested URL.
@@ -1637,15 +1638,18 @@ export class CoreFilepoolProvider {
      */
     protected getFileUrlByUrl(siteId: string, fileUrl: string, component: string, componentId?: string | number,
             mode: string = 'url', timemodified: number = 0, checkSize: boolean = true, downloadUnknown?: boolean,
-            options: any = {}, revision?: number): Promise<string> {
+            options: any = {}, revision?: number, queuedPromiseCallback?: any): Promise<string> {
 
         let fileId;
         const addToQueue = (fileUrl): void => {
                 // Add the file to queue if needed and ignore errors.
-                this.addToQueueIfNeeded(siteId, fileUrl, component, componentId, timemodified, checkSize,
+                const promise = this.addToQueueIfNeeded(siteId, fileUrl, component, componentId, timemodified, checkSize,
                     downloadUnknown, options, revision).catch(() => {
                         // Ignore errors.
                     });
+                if (queuedPromiseCallback) {
+                    queuedPromiseCallback(promise);
+                }
             };
 
         return this.fixPluginfileURL(siteId, fileUrl).then((fixedUrl) => {
@@ -2078,15 +2082,17 @@ export class CoreFilepoolProvider {
      *                        Ignored if checkSize=false.
      * @param options Extra options (isexternalfile, repositorytype).
      * @param revision File revision. If not defined, it will be calculated using the URL.
+     * @param queuedPromiseCallback A callback that will use a queued promise.
      * @return Resolved with the URL to use.
      * @description
      * This will return a URL pointing to the content of the requested URL.
      * The URL returned is compatible to use with IMG tags.
      */
     getSrcByUrl(siteId: string, fileUrl: string, component: string, componentId?: string | number, timemodified: number = 0,
-            checkSize: boolean = true, downloadUnknown?: boolean, options: any = {}, revision?: number): Promise<string> {
+            checkSize: boolean = true, downloadUnknown?: boolean, options: any = {}, revision?: number,
+            queuedPromiseCallback?: any): Promise<string> {
         return this.getFileUrlByUrl(siteId, fileUrl, component, componentId, 'src',
-            timemodified, checkSize, downloadUnknown, options, revision);
+            timemodified, checkSize, downloadUnknown, options, revision, queuedPromiseCallback);
     }
 
     /**
@@ -2121,15 +2127,17 @@ export class CoreFilepoolProvider {
      *                        Ignored if checkSize=false.
      * @param options Extra options (isexternalfile, repositorytype).
      * @param revision File revision. If not defined, it will be calculated using the URL.
+     * @param queuedPromiseCallback A callback that will use a queued promise.
      * @return Resolved with the URL to use.
      * @description
      * This will return a URL pointing to the content of the requested URL.
      * The URL returned is compatible to use with a local browser.
      */
     getUrlByUrl(siteId: string, fileUrl: string, component: string, componentId?: string | number, timemodified: number = 0,
-            checkSize: boolean = true, downloadUnknown?: boolean, options: any = {}, revision?: number): Promise<string> {
+            checkSize: boolean = true, downloadUnknown?: boolean, options: any = {}, revision?: number,
+            queuedPromiseCallback?: any): Promise<string> {
         return this.getFileUrlByUrl(siteId, fileUrl, component, componentId, 'url',
-            timemodified, checkSize, downloadUnknown, options, revision);
+            timemodified, checkSize, downloadUnknown, options, revision, queuedPromiseCallback);
     }
 
     /**

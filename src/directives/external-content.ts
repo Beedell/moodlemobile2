@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Directive, Input, AfterViewInit, ElementRef, OnChanges, SimpleChange, Output, EventEmitter } from '@angular/core';
+import { Directive, Input, AfterViewInit, ElementRef, OnChanges, SimpleChange, Output, EventEmitter, Optional }
+    from '@angular/core';
 import { Platform } from 'ionic-angular';
 import { CoreAppProvider } from '@providers/app';
 import { CoreLoggerProvider } from '@providers/logger';
@@ -21,6 +22,7 @@ import { CoreSitesProvider } from '@providers/sites';
 import { CoreDomUtilsProvider } from '@providers/utils/dom';
 import { CoreUrlUtilsProvider } from '@providers/utils/url';
 import { CoreUtilsProvider } from '@providers/utils/utils';
+import { CoreSitePluginsPluginContentComponent } from '@core/siteplugins/components/plugin-content/plugin-content';
 
 /**
  * Directive to handle external content.
@@ -54,7 +56,8 @@ export class CoreExternalContentDirective implements AfterViewInit, OnChanges {
 
     constructor(element: ElementRef, logger: CoreLoggerProvider, private filepoolProvider: CoreFilepoolProvider,
             private platform: Platform, private sitesProvider: CoreSitesProvider, private domUtils: CoreDomUtilsProvider,
-            private urlUtils: CoreUrlUtilsProvider, private appProvider: CoreAppProvider, private utils: CoreUtilsProvider) {
+            private urlUtils: CoreUrlUtilsProvider, private appProvider: CoreAppProvider, private utils: CoreUtilsProvider,
+            @Optional() private pluginComponent?: CoreSitePluginsPluginContentComponent) {
         // This directive can be added dynamically. In that case, the first param is the HTMLElement.
         this.element = element.nativeElement || element;
         this.logger = logger.getInstance('CoreExternalContentDirective');
@@ -228,12 +231,25 @@ export class CoreExternalContentDirective implements AfterViewInit, OnChanges {
             // Download images, tracks and posters if size is unknown.
             const dwnUnknown = tagName == 'IMG' || tagName == 'TRACK' || targetAttr == 'poster';
             let promise;
+            const pluginComponent = this.pluginComponent;
+            const queuedPromiseCallback = (p: Promise<any>): void => {
+                // If queued for download, emit the component's onContentLoaded when ready so the
+                // UI updates with correct information about download size.
+                p.then(() => {
+                    // Invalidate the cache by passing true to contentLoaded, as there is a new file downloaded.
+                    if (pluginComponent) {
+                        pluginComponent.onContentLoaded.emit(true);
+                    }
+                });
+            };
 
             if (targetAttr === 'src' && tagName !== 'SOURCE' && tagName !== 'TRACK' && tagName !== 'VIDEO' &&
                     tagName !== 'AUDIO') {
-                promise = this.filepoolProvider.getSrcByUrl(siteId, url, this.component, this.componentId, 0, true, dwnUnknown);
+                promise = this.filepoolProvider.getSrcByUrl(siteId, url, this.component, this.componentId, 0, true, dwnUnknown,
+                    {}, 0, queuedPromiseCallback);
             } else {
-                promise = this.filepoolProvider.getUrlByUrl(siteId, url, this.component, this.componentId, 0, true, dwnUnknown);
+                promise = this.filepoolProvider.getUrlByUrl(siteId, url, this.component, this.componentId, 0, true, dwnUnknown,
+                    {}, 0, queuedPromiseCallback);
             }
 
             return promise.then((finalUrl) => {
